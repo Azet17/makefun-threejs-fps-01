@@ -151,7 +151,7 @@ function think(G, f, dt) {
     // Lost sight: keep last known spot briefly, then resume route/hold.
     if (G.time - b.lastSeenAt > 2.5) {
       b.target = null;
-      if (f.team === 'v' && G.bomb.planted) b.state = 'rotate';
+      if (G.bomb.planted) b.state = 'rotate'; // bomb down: both teams converge on the site
       else if (f.team === 'v') b.state = 'route';
       else b.state = 'hold';
     }
@@ -308,16 +308,16 @@ function stepChannel(G, f, dt) {
   } else if (b.state === 'defuse' && G.bomb.planted) {
     const site = MAP.sites[G.bomb.site];
     const d = Math.hypot(f.pos.x - site.x, f.pos.z - site.z);
-    const anyVanguardAlive = G.fighters.some((x) => x.alive && x.team === 'v');
-    const vanguardNear = G.fighters.some((x) => x.alive && x.team === 'v' &&
-      Math.hypot(x.pos.x - site.x, x.pos.z - site.z) < 12);
-    if (d > site.r || vanguardNear) { b.channel = 0; b.state = 'rotate'; return; }
-    if (!anyVanguardAlive || d <= site.r) {
-      b.channel += dt;
-      if (b.channel >= 5) {
-        G.defuseBomb(f);
-        b.channel = 0;
-      }
+    // Out of the site ring: walk back in. A Vanguard nearby no longer cancels
+    // the defuse outright — the old 12 m check made defuse impossible whenever
+    // anyone defended the site, so the bomb always detonated. If the defuser
+    // can actually see an enemy, think() switches it to 'engage' and the
+    // channel resets there instead.
+    if (d > site.r) { b.channel = 0; b.state = 'rotate'; return; }
+    b.channel += dt;
+    if (b.channel >= 5) {
+      G.defuseBomb(f);
+      b.channel = 0;
     }
   } else b.channel = 0;
 }
