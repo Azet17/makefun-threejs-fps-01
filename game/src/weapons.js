@@ -60,6 +60,13 @@ export function raycastShot(G, origin, dir, shooter, maxDist) {
   _raycaster.far = Math.min(maxDist, wallT);
   for (const f of G.fighters) {
     if (!f.alive || f === shooter) continue;
+    // No friendly fire: a teammate standing in the line of fire is not hit —
+    // the shot passes through them and can still hit an enemy (or a wall)
+    // behind them. Before this, a teammate's body absorbed the whole burst:
+    // bots headshot their own squad through crossfire (Havoc killed Mira in
+    // a live round) and a teammate between you and an enemy made the enemy
+    // unhittable. Tactical shooters play with friendly fire off by default.
+    if (f.team === shooter.team) continue;
     if (f.isPlayer) {
       // The player has no mesh: test body + head boxes directly.
       const p = f.pos;
